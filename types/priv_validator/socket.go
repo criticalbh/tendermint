@@ -33,17 +33,17 @@ var (
 )
 
 // SocketClientOption sets an optional parameter on the SocketClient.
-type SocketClientOption func(*socketClient)
+type SocketClientOption func(*SocketClient)
 
 // SocketClientTimeout sets the timeout for connecting to the external socket
 // address.
 func SocketClientTimeout(timeout time.Duration) SocketClientOption {
-	return func(sc *socketClient) { sc.connectTimeout = timeout }
+	return func(sc *SocketClient) { sc.connectTimeout = timeout }
 }
 
-// socketClient implements PrivValidator, it uses a socket to request signatures
+// SocketClient implements PrivValidator, it uses a socket to request signatures
 // from an external process.
-type socketClient struct {
+type SocketClient struct {
 	cmn.BaseService
 
 	conn    net.Conn
@@ -53,28 +53,28 @@ type socketClient struct {
 	connectTimeout time.Duration
 }
 
-// Check that socketClient implements PrivValidator2.
-var _ types.PrivValidator2 = (*socketClient)(nil)
+// Check that SocketClient implements PrivValidator2.
+var _ types.PrivValidator2 = (*SocketClient)(nil)
 
-// NewsocketClient returns an instance of socketClient.
+// NewSocketClient returns an instance of SocketClient.
 func NewSocketClient(
 	logger log.Logger,
 	socketAddr string,
 	privKey *crypto.PrivKeyEd25519,
-) *socketClient {
-	sc := &socketClient{
+) *SocketClient {
+	sc := &SocketClient{
 		addr:           socketAddr,
 		connectTimeout: time.Second * defaultConnDeadlineSeconds,
 		privKey:        privKey,
 	}
 
-	sc.BaseService = *cmn.NewBaseService(logger, "privValidatorsocketClient", sc)
+	sc.BaseService = *cmn.NewBaseService(logger, "privValidatorSocketClient", sc)
 
 	return sc
 }
 
 // OnStart implements cmn.Service.
-func (sc *socketClient) OnStart() error {
+func (sc *SocketClient) OnStart() error {
 	if err := sc.BaseService.OnStart(); err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (sc *socketClient) OnStart() error {
 }
 
 // OnStop implements cmn.Service.
-func (sc *socketClient) OnStop() {
+func (sc *SocketClient) OnStop() {
 	sc.BaseService.OnStop()
 
 	if sc.conn != nil {
@@ -100,7 +100,7 @@ func (sc *socketClient) OnStop() {
 
 // GetAddress implements PrivValidator.
 // TODO(xla): Remove when PrivValidator2 replaced PrivValidator.
-func (sc *socketClient) GetAddress() types.Address {
+func (sc *SocketClient) GetAddress() types.Address {
 	addr, err := sc.Address()
 	if err != nil {
 		panic(err)
@@ -110,7 +110,7 @@ func (sc *socketClient) GetAddress() types.Address {
 }
 
 // Address is an alias for PubKey().Address().
-func (sc *socketClient) Address() (cmn.HexBytes, error) {
+func (sc *SocketClient) Address() (cmn.HexBytes, error) {
 	p, err := sc.PubKey()
 	if err != nil {
 		return nil, err
@@ -121,7 +121,7 @@ func (sc *socketClient) Address() (cmn.HexBytes, error) {
 
 // GetPubKey implements PrivValidator.
 // TODO(xla): Remove when PrivValidator2 replaced PrivValidator.
-func (sc *socketClient) GetPubKey() crypto.PubKey {
+func (sc *SocketClient) GetPubKey() crypto.PubKey {
 	pubKey, err := sc.PubKey()
 	if err != nil {
 		panic(err)
@@ -131,7 +131,7 @@ func (sc *socketClient) GetPubKey() crypto.PubKey {
 }
 
 // PubKey implements PrivValidator2.
-func (sc *socketClient) PubKey() (crypto.PubKey, error) {
+func (sc *SocketClient) PubKey() (crypto.PubKey, error) {
 	err := writeMsg(sc.conn, &PubKeyMsg{})
 	if err != nil {
 		return crypto.PubKey{}, err
@@ -146,7 +146,7 @@ func (sc *socketClient) PubKey() (crypto.PubKey, error) {
 }
 
 // SignVote implements PrivValidator2.
-func (sc *socketClient) SignVote(chainID string, vote *types.Vote) error {
+func (sc *SocketClient) SignVote(chainID string, vote *types.Vote) error {
 	err := writeMsg(sc.conn, &SignVoteMsg{Vote: vote})
 	if err != nil {
 		return err
@@ -163,7 +163,7 @@ func (sc *socketClient) SignVote(chainID string, vote *types.Vote) error {
 }
 
 // SignProposal implements PrivValidator2.
-func (sc *socketClient) SignProposal(chainID string, proposal *types.Proposal) error {
+func (sc *SocketClient) SignProposal(chainID string, proposal *types.Proposal) error {
 	err := writeMsg(sc.conn, &SignProposalMsg{Proposal: proposal})
 	if err != nil {
 		return err
@@ -180,7 +180,7 @@ func (sc *socketClient) SignProposal(chainID string, proposal *types.Proposal) e
 }
 
 // SignHeartbeat implements PrivValidator2.
-func (sc *socketClient) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) error {
+func (sc *SocketClient) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) error {
 	err := writeMsg(sc.conn, &SignHeartbeatMsg{Heartbeat: heartbeat})
 	if err != nil {
 		return err
@@ -196,7 +196,7 @@ func (sc *socketClient) SignHeartbeat(chainID string, heartbeat *types.Heartbeat
 	return nil
 }
 
-func (sc *socketClient) connect() (net.Conn, error) {
+func (sc *SocketClient) connect() (net.Conn, error) {
 	retries := defaultDialRetryMax
 
 RETRY_LOOP:
