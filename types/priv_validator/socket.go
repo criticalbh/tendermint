@@ -315,7 +315,7 @@ func (pvss *PrivValidatorSocketServer) acceptConnections() {
 				return // Ignore error from listener closing.
 			}
 			pvss.Logger.Error(
-				"accpetConnections",
+				"acceptConnections",
 				"err", errors.Wrap(err, "failed to accept connection"),
 			)
 			continue
